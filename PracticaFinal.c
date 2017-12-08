@@ -13,8 +13,8 @@
 #include <stdlib.h>     /* General Utilities */
 #include <pthread.h>    /* POSIX Threads */
 #include <string.h>     /* String handling */
-#include <Math.h> //Añado Math para calcular la raiz en la distancia
-#define TAMBUFF 4		  //Tamaño buffer circular
+#include <math.h>       //Añado Math para calcular la raiz en la distancia
+#define TAMBUFF 4		//Tamaño buffer circular
 #define NUM_HCALC 6		//Numero de Chacales
 #define RUTAFICHD "./Datos.txt"
 #define RUTAFICHP "./Patron.txt"
@@ -22,7 +22,7 @@
 /* prototype for thread routine */
 void cargaDatos ( void *ptr );
 
-void calcula(void *ptr); //Cabecera del metodo de los hilos calculadores
+void calcula( int numHil ); //Cabecera del metodo de los hilos calculadores
 
 /* struct to hold data to be passed to a thread
    this shows how multiple data items can be passed to a thread */
@@ -52,16 +52,20 @@ int main()
     pthread_create (&hiloCarga, NULL, (void *) &cargaDatos, (void *) NULL);
 	
 	for(i=0;i<NUM_HCALC;i++){
-		
-	pthread_create (&hiloCalcula[i], NULL, (void *) &calcula, (void *) NULL);
-	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de hilo que es
+        int *arg;
+        if (malloc(sizeof(*arg)) == NULL) { printf("No se puedo reservar memoria para arg.\n");
+        exit(-1);
+        }//lo copie de un ejemplo pero se hace dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
+        *arg = i;
+        pthread_create (&hiloCalcula[i], 0 , (void *) &calcula, arg);
+	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de         hilo que es
 	//Nos hara mas tarde en el metodo calcula
-	}
+    }
 	
     /*El main acaba */
     pthread_join(hiloCarga, NULL);
+	pthread_join(hiloCalcula[i], NULL); //Esto lo pongo pero Ni Puta Idea
 	
-	pthread_join(hiloCalcula, NULL); //Esto lo pongo pero Ni Puta Idea
 	
     printf("El hiloCarga ha termina'o...\n");
     exit(0);
@@ -104,7 +108,7 @@ void cargaDatos ( void *ptr )
 
 
 //Aqui comienza el metodo de los hilos calculadores
-void calcula(void *ptr)
+void calcula(int numHil)
 {
 	typedef struct {
   int vector[256];
@@ -134,13 +138,13 @@ printf("Se ha liberado la celda %d del buffer",Reg.fila);
 	for (i=0;i<256;i++)//Si he entendido bien el enunciado hay que calcular la resta entre posiciones
 						//para cada uno de los 256 numeros que tenemos en el vector con los del patron
 						//elevarlo al cuadrado y sumarlos todos, despues hacemos la raiz
-						//si el calculo d aproblemas de tipos habria que castear
+						//si el calculo da problemas de tipos habria que castear
 	{				
 		fscanf(fp,"%d",&aux);
 		Resultado=Resultado+pow((aux-Reg.vector[i]),2);
 	}
 
-	Resultado=Math.sqrt(Resultado);
+	Resultado=sqrt(Resultado);
 	
 	R[numHil].fil=Reg.fila;//En el nuevo buffer añado la fila
 	R[numHil].D=Resultado; //En el nuevo buffer añado la Distancia
