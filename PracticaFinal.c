@@ -38,37 +38,38 @@ typedef struct {
   int fila;
   //semaforo
 }Buffer2;
-Buffer2 R[NUM_HCALC]; //He definido el vector de numL y D que rellenan los calculadores como
+Buffer2 R[NUM_HCALC];
+            //He definido el vector de numL y D que rellenan los calculadores como
 						//un vector de estructuras de manera analoga al otro
-						//El tamaño es o unico que dudo, puse el de num max de hilos consumidores
-
+						//El tamaño es lo unico que dudo, puse el de num max de hilos consumidores
 int main()
 {
 	int i;
-    pthread_t hiloCarga;  //Creacion del hilo
-	
+  pthread_t hiloCarga;  //Creacion del hilo
+
 	pthread_t hiloCalcula[NUM_HCALC]; //Creo los hilos consumidores
-	
-    pthread_create (&hiloCarga, NULL, (void *) &cargaDatos, (void *) NULL);
-	
+
+  pthread_create (&hiloCarga, NULL, (void *) &cargaDatos, (void *) NULL);
+
 	for(i=0;i<NUM_HCALC;i++){
         int *arg;
-        if (malloc(sizeof(*arg)) == NULL) { printf("No se puedo reservar memoria para arg.\n");
-        exit(-1);
+        if (malloc(sizeof(*arg)) == NULL) {
+          printf("No se puedo reservar memoria para arg.\n");
+          exit(-1);
         }//lo copie de un ejemplo pero se hace dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
         *arg = i;
         pthread_create (&hiloCalcula[i], 0 , (void *) &calcula, arg);
 	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de         hilo que es
 	//Nos hara mas tarde en el metodo calcula
-    }
-	
+  }
+
     /*El main acaba */
-    pthread_join(hiloCarga, NULL);
+  pthread_join(hiloCarga, NULL);
 	pthread_join(hiloCalcula[i], NULL); //Esto lo pongo pero Ni Puta Idea
-	
-	
-    printf("El hiloCarga ha termina'o...\n");
-    exit(0);
+
+
+  printf("El hiloCarga ha termina'o...\n");
+  exit(0);
 }
 
 /**
@@ -114,39 +115,38 @@ void calcula(int numHil)
   int vector[256];
   int fila;
   //semaforo
-}Registro;
-Registro Reg;//Creo esta estructura que en verdad no hace falta, pero al principio
+  }Registro;
+
+  Registro Reg;//Creo esta estructura que en verdad no hace falta, pero al principio
 				//tenia otra cosa y dije bueno pues lo dejo, aunque se puede sacar de la struct
 
-int i;
-double Resultado=0; // es double porque pow() devuelve double
-int aux;
+  int i;
+  double resultado=0; // es double porque pow() devuelve double
+  int aux;
 
-Reg.vector=B[numHil].vector;
-Reg.fila=B[numHil].fila;//Recojo en la estructura esta el contenido del buffer
-//Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
+  Reg.vector=B[numHil].vector;
+  Reg.fila=B[numHil].fila;//Recojo en la estructura esta el contenido del buffer
+  //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
 
-printf("Se ha liberado la celda %d del buffer",Reg.fila);
-	
+  printf("Se ha liberado la celda %d del buffer",Reg.fila);
+
 	FILE *fp;
   if((fp=fopen(RUTAFICHP,"r"))==NULL)
 	{
-		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHD);
+		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHP);
 		exit(-1);
 	}//Abro el fichero patron
-	
 	for (i=0;i<256;i++)//Si he entendido bien el enunciado hay que calcular la resta entre posiciones
 						//para cada uno de los 256 numeros que tenemos en el vector con los del patron
 						//elevarlo al cuadrado y sumarlos todos, despues hacemos la raiz
 						//si el calculo da problemas de tipos habria que castear
-	{				
+	{
 		fscanf(fp,"%d",&aux);
-		Resultado=Resultado+pow((aux-Reg.vector[i]),2);
+		resultado=resultado+pow((aux-Reg.vector[i]),2);
 	}
+	resultado=sqrt(resultado);
 
-	Resultado=sqrt(Resultado);
-	
-	R[numHil].fil=Reg.fila;//En el nuevo buffer añado la fila
-	R[numHil].D=Resultado; //En el nuevo buffer añado la Distancia
+  R[numHil].fil=Reg.fila;//En el nuevo buffer añado la fila
+	R[numHil].D=resultado; //En el nuevo buffer añado la Distancia
 	//numHil sera lo que le enviamos que ya te comente arriba
 }
