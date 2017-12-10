@@ -22,7 +22,7 @@
 /* prototype for thread routine */
 void cargaDatos ( void *ptr );
 
-void calcula( int numHil ); //Cabecera del metodo de los hilos calculadores
+void calcula_i( int numHil ); //Cabecera del metodo de los hilos calculadores
 
 /* struct to hold data to be passed to a thread
    this shows how multiple data items can be passed to a thread */
@@ -58,9 +58,9 @@ int main()
           exit(-1);
         }//lo copie de un ejemplo pero se hace dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
         *arg = i;
-        pthread_create (&hiloCalcula[i], 0 , (void *) &calcula, arg);
+        pthread_create (&hiloCalcula[i], 0 , (void *) &calcula_i, arg);
 	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de         hilo que es
-	//Nos hara mas tarde en el metodo calcula
+	//Nos hara mas tarde en el metodo calcula_i
   }
 
     /*El main acaba */
@@ -88,6 +88,8 @@ void cargaDatos ( void *ptr )
 		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHD);
 		exit(-1);
 	}
+	
+	// p(hay_hueco_B[i])
 	for(k=0;k<1025;k++)	//He puesto el for que te comente para que no haya bucle infinito (en teoria XD)
 	{
     for(i = 0; i<256; i++)
@@ -96,6 +98,7 @@ void cargaDatos ( void *ptr )
     }
     cont = (cont+1)%TAMBUFF;
   }
+  // v(hay_dato_B[i])
 
   for(i = 0; i<TAMBUFF; i++){
     for(j = 0; j < 256; j++){
@@ -109,26 +112,28 @@ void cargaDatos ( void *ptr )
 
 
 //Aqui comienza el metodo de los hilos calculadores
-void calcula(int numHil)
+void calcula_i(int numHil)
 {
-	typedef struct {
-  int vector[256];
-  int fila;
+  //typedef struct {
+  int vectorRegistro_i[256];
+  int filaRegistro_i;
   //semaforo
-  }Registro;
+  //}Registro;
 
-  Registro Reg;//Creo esta estructura que en verdad no hace falta, pero al principio
+  //Registro Reg;//Creo esta estructura que en verdad no hace falta, pero al principio
 				//tenia otra cosa y dije bueno pues lo dejo, aunque se puede sacar de la struct
 
   int i;
   double resultado=0; // es double porque pow() devuelve double
   int aux;
-
-  Reg.vector=B[numHil].vector;
-  Reg.fila=B[numHil].fila;//Recojo en la estructura esta el contenido del buffer
+    // p(hay_dato_B[i])
+    for(i = 0; i< 256; i++){
+        vectorRegistro_i[i]=B[numHil].vector[i];
+    }
+  filaRegistro_i=B[numHil].fila;//Recojo en la estructura esta el contenido del buffer
   //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
-
-  printf("Se ha liberado la celda %d del buffer",Reg.fila);
+    //v(hay_hueco_B[i])
+  printf("Se ha liberado la celda %d del buffer",filaRegistro_i);
 
 	FILE *fp;
   if((fp=fopen(RUTAFICHP,"r"))==NULL)
@@ -142,11 +147,14 @@ void calcula(int numHil)
 						//si el calculo da problemas de tipos habria que castear
 	{
 		fscanf(fp,"%d",&aux);
-		resultado=resultado+pow((aux-Reg.vector[i]),2);
+		resultado=resultado+pow((aux-vectorRegistro_i[i]),2);
 	}
 	resultado=sqrt(resultado);
 
-  R[numHil].fil=Reg.fila;//En el nuevo buffer añado la fila
-	R[numHil].D=resultado; //En el nuevo buffer añado la Distancia
+    R[numHil].fila=filaRegistro_i;//En el nuevo buffer añado la fila
+    R[numHil].D=resultado; //En el nuevo buffer añado la Distancia
 	//numHil sera lo que le enviamos que ya te comente arriba
+	
+	// v(hay_dato_R[i])
+	// p(hay_espacio_R[i])
 }
