@@ -6,14 +6,17 @@
 //asi que nada ya me contaras y sorry, no puse acentos por si casca lo del utf-8 xD
 
 /* Includes */
-#include <unistd.h>     /* Symbolic Constants */
 #include <sys/types.h>  /* Primitive System Data Types */
+#include <semaphore.h>  /* Semaforos */
+#include <pthread.h>    /* POSIX Threads */
+#include <unistd.h>     /* Symbolic Constants */
+#include <stdlib.h>     /* General Utilities */
+#include <string.h>     /* String handling */
 #include <errno.h>      /* Errors */
 #include <stdio.h>      /* Input/Output */
-#include <stdlib.h>     /* General Utilities */
-#include <pthread.h>    /* POSIX Threads */
-#include <string.h>     /* String handling */
 #include <math.h>       //Añado Math para calcular la raiz en la distancia
+
+
 #define TAMBUFF 4		//Tamaño buffer circular
 #define NUM_HCALC 6		//Numero de Chacales
 #define RUTAFICHD "./Datos.txt"
@@ -23,25 +26,20 @@
 void cargaDatos ( void *ptr );
 
 void calcula_i( int numHil ); //Cabecera del metodo de los hilos calculadores
-
-/* struct to hold data to be passed to a thread
-   this shows how multiple data items can be passed to a thread */
+/*Recursos compartidos*/
 typedef struct {
   int vector[256];
   int fila;
   //semaforo
-}Buffer;
-Buffer B[TAMBUFF];
-
+}Buffer; //buffer principal
 typedef struct {
   double D;
   int fila;
   //semaforo
-}Buffer2;
+}Buffer2; //segundo buffer
+Buffer B[TAMBUFF];
 Buffer2 R[NUM_HCALC];
-            //He definido el vector de numL y D que rellenan los calculadores como
-						//un vector de estructuras de manera analoga al otro
-						//El tamaño es lo unico que dudo, puse el de num max de hilos consumidores
+
 int main()
 {
 	int i;
@@ -56,7 +54,7 @@ int main()
         if (malloc(sizeof(*arg)) == NULL) {
           printf("No se puedo reservar memoria para arg.\n");
           exit(-1);
-        }//lo copie de un ejemplo pero se hace dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
+        }//lo copie de un ejemplo pero se instancia *arg dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
         *arg = i;
         pthread_create (&hiloCalcula[i], 0 , (void *) &calcula_i, arg);
 	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de         hilo que es
@@ -65,9 +63,7 @@ int main()
 
     /*El main acaba */
   pthread_join(hiloCarga, NULL);
-	pthread_join(hiloCalcula[i], NULL); //Esto lo pongo pero Ni Puta Idea
-
-
+  pthread_join(hiloCalcula[i], NULL); //Esto lo pongo pero Ni Puta Idea
   printf("El hiloCarga ha termina'o...\n");
   exit(0);
 }
@@ -81,8 +77,8 @@ void cargaDatos ( void *ptr )
   int i,j,k;
   int var1;
   int aux[256];
-	int cont=0;
-	FILE *fp;
+  int cont=0;
+  FILE *fp;
   if((fp=fopen(RUTAFICHD,"r"))==NULL)
 	{
 		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHD);
@@ -106,8 +102,8 @@ void cargaDatos ( void *ptr )
     }
     printf("\n");
   }
-	fclose(fp);
-    pthread_exit(0); /* exit */
+  fclose(fp);
+  pthread_exit(0); /* exit */
 } /* print_message_function ( void *ptr ) */
 
 
@@ -134,8 +130,8 @@ void calcula_i(int numHil)
   //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
     //v(hay_hueco_B[i])
   printf("Se ha liberado la celda %d del buffer",filaRegistro_i);
-
-	FILE *fp;
+  
+  FILE *fp;
   if((fp=fopen(RUTAFICHP,"r"))==NULL)
 	{
 		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHP);
