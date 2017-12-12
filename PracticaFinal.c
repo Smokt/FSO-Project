@@ -51,21 +51,20 @@ int main()
   sem_init(&hay_dato_B,0,0);
 
   int i=0;
-  pthread_t hiloCarga;  //Creacion del hilo
+  pthread_t hiloCarga;     //Creacion del hilo
 	pthread_t hiloCalcula_i; //Creo los hilos consumidores
   pthread_create (&hiloCarga, NULL, (void *) &cargaDatos, (void *) NULL);
-
-	for(i=0;i<0;i++){//sustituir el <0 por <NUM_HCALC
+	/*for(i=0;i<0;i++){//sustituir el <0 por <NUM_HCALC
         int *arg;
         if ((arg = (int*)malloc(sizeof(int))) == NULL) {
           printf("No se puedo reservar memoria para arg.\n");
           exit(-1);
         }//lo copie de un ejemplo pero se instancia *arg dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
-        *arg = i;
+        *arg = i;*/int *arg = 0;
        pthread_create (&hiloCalcula_i, 0 , (void *) &calcula_i, arg);
 	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de         hilo que es
 	//Nos hara mas tarde en el metodo calcula_i
-  }
+  //}
     /*El main acaba*/
   pthread_join(hiloCarga, NULL);
   pthread_join(hiloCalcula_i, NULL); //Esto lo pongo pero Ni Puta Idea
@@ -126,7 +125,7 @@ void calcula_i(int numHil)
     sem_wait(&hay_dato_B); //espera a que haya un dato en el buffer para poder vaciar la celda
     for(i = 0; i< 256; i++){
         vectorRegistro_i[i]=B[numHil].vector[i];
-        printf("%d ",vectorRegistro_i[i]);
+        printf("%d ",vectorRegistro_i[i]);fflush(stdout);
     }
   filaRegistro_i=B[numHil].fila;//Recojo en la estructura esta el contenido del buffer
   //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
@@ -153,4 +152,5 @@ void calcula_i(int numHil)
 
 	// v(hay_dato_R[i])
 	// p(hay_espacio_R[i])
+  fclose(fp);
 }
