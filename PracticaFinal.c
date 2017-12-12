@@ -16,7 +16,7 @@
 #include <stdio.h>      /* Input/Output */
 #include <math.h>       //Añado Math para calcular la raiz en la distancia
 
-
+/* Constantes */
 #define TAMBUFF 4		//Tamaño buffer circular
 #define NUM_HCALC 6	//Numero de Chacales
 #define RUTAFICHD "./Datos.txt"
@@ -40,19 +40,24 @@ typedef struct {
 
 Buffer B[TAMBUFF];
 Buffer2 R[NUM_HCALC];
-
+/* Declaracion de samforos */
 sem_t hay_hueco_B;
 sem_t hay_dato_B;
+sem_t mutex_B[TAMBUFF];
 
 int main()
 {
+  int i;
+  pthread_t hiloCarga;     //Creacion del hilo
+  pthread_t hiloCalcula_i; //Creo los hilos consumidores
+
   /*Inicializacion de semaforos*/
   sem_init(&hay_hueco_B,0,TAMBUFF);
   sem_init(&hay_dato_B,0,0);
+  for(i=0;i<TAMBUFF;i++){
+    sem_init(&mutex_B[i],0,1);//garantizamos exclusion mutua sobre celdas en el buffer
+  }
 
-  int i=0;
-  pthread_t hiloCarga;     //Creacion del hilo
-	pthread_t hiloCalcula_i; //Creo los hilos consumidores
   pthread_create (&hiloCarga, NULL, (void *) &cargaDatos, (void *) NULL);
 	/*for(i=0;i<0;i++){//sustituir el <0 por <NUM_HCALC
         int *arg;
@@ -84,11 +89,12 @@ void cargaDatos ( )
   if((fp=fopen(RUTAFICHD,"r"))==NULL)
 	{
 		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHD);
-    fflush(stdout);
+    fflush(stderr);
 		exit(-1);
 	}
-	 sem_wait(&hay_hueco_B);//espera a que haya hueco en el buffer para poder escribir
-	for(k=0;k<1024;k++)	//He puesto el for que te comente para que no haya bucle infinito (en teoria XD)
+	sem_wait(&hay_hueco_B);//espera a que haya hueco en el buffer para poder escribir
+  sem_wait(&mutex_B[cont]);
+  for(k=0;k<1024;k++)	//He puesto el for que te comente para que no haya bucle infinito (en teoria XD)
 	{
     for(i = 0; i<256; i++)
     {
@@ -98,6 +104,7 @@ void cargaDatos ( )
     B[cont].fila=k+1;
     cont = (cont+1)%TAMBUFF;
   }
+  sem_post(&mutex_B[cont]);
   sem_post(&hay_dato_B);//señala que hay un dato el buffer
   for(i = 0; i<TAMBUFF; i++){
     for(j = 0; j < 256; j++){
@@ -122,19 +129,22 @@ void calcula_i(int numHil)
 				//tenia otra cosa y dije bueno pues lo dejo, aunque se puede sacar de la struct
   int i,aux;
   double resultado=0; // es double porque pow() devuelve double
-    sem_wait(&hay_dato_B); //espera a que haya un dato en el buffer para poder vaciar la celda
-    for(i = 0; i< 256; i++){
-        vectorRegistro_i[i]=B[numHil].vector[i];
-        printf("%d ",vectorRegistro_i[i]);fflush(stdout);
-    }
+  sem_wait(&hay_dato_B); //espera a que haya un dato en el buffer para poder vaciar la celda
+  sem_wait(&mutex_B[numHil]);
+  for(i = 0; i< 256; i++){
+    vectorRegistro_i[i]=B[numHil].vector[i];
+    printf("%d ",vectorRegistro_i[i]);fflush(stdout);
+  }
   filaRegistro_i=B[numHil].fila;//Recojo en la estructura esta el contenido del buffer
   //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
-    sem_post(&hay_hueco_B); // indica que hay un hueco en el buffer pues se ha vaciado una celda
+  sem_post(&mutex_B[numHil]);
+  sem_post(&hay_hueco_B); // indica que hay un hueco en el buffer pues se ha vaciado una celda
   printf("Se ha liberado la celda %d del buffer",filaRegistro_i);fflush(stdout);
   FILE *fp;
   if((fp=fopen(RUTAFICHP,"r"))==NULL)
 	{
 		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHP);
+    fflush(stderr);
 		exit(-1);
 	}//Abro el fichero patroooooooooooon
 	for (i=0;i<256;i++)//Si he entendido bien el enunciado hay que calcular la resta entre posiciones
