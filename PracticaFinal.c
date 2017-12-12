@@ -23,48 +23,55 @@
 #define RUTAFICHP "./Patron.txt"
 
 /* prototype for thread routine */
-void cargaDatos ( void *ptr );
+void cargaDatos ( );
+// Cabecera del metodo de los hilos calculadores
+void calcula_i( int numHil );
 
-void calcula_i( int numHil ); //Cabecera del metodo de los hilos calculadores
-/*Recursos compartidos*/
+/* Recursos compartidos */
 typedef struct {
   int vector[256];
   int fila;
-  //semaforo
 }Buffer; //buffer principal
+
 typedef struct {
   double D;
   int fila;
-  //semaforo
 }Buffer2; //segundo buffer
+
 Buffer B[TAMBUFF];
 Buffer2 R[NUM_HCALC];
 
+sem_t hay_hueco_B;
+sem_t hay_dato_B;
+
 int main()
 {
-	int i;
+  /*Inicializacion de semaforos*/
+  sem_init(&hay_hueco_B,0,TAMBUFF);
+  sem_init(&hay_dato_B,0,0);
+  int i=0;
   pthread_t hiloCarga;  //Creacion del hilo
-
-	pthread_t hiloCalcula[NUM_HCALC]; //Creo los hilos consumidores
-
+	pthread_t hiloCalcula; //Creo los hilos consumidores
   pthread_create (&hiloCarga, NULL, (void *) &cargaDatos, (void *) NULL);
 
-	for(i=0;i<NUM_HCALC;i++){
+	/*for(i=0;i<NUN_HCALC;i++){
         int *arg;
-        if (malloc(sizeof(*arg)) == NULL) {
+            printf("hjgsdjhfds");
+        if ((arg = (int*)malloc(sizeof(int))) == NULL) {
           printf("No se puedo reservar memoria para arg.\n");
           exit(-1);
         }//lo copie de un ejemplo pero se instancia *arg dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
-        *arg = i;
-        pthread_create (&hiloCalcula[i], 0 , (void *) &calcula_i, arg);
+        *arg = i;*/
+        int *arg=0;
+       pthread_create (&hiloCalcula, 0 , (void *) &calcula_i, arg);
 	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de         hilo que es
 	//Nos hara mas tarde en el metodo calcula_i
-  }
-
-    /*El main acaba */
-  pthread_join(hiloCarga, NULL);
-  pthread_join(hiloCalcula[i], NULL); //Esto lo pongo pero Ni Puta Idea
+  //}
+    /*El main acaba*/
+pthread_join(hiloCarga, NULL);
+  pthread_join(hiloCalcula, NULL); //Esto lo pongo pero Ni Puta Idea
   printf("El hiloCarga ha termina'o...\n");
+
   exit(0);
 }
 
@@ -72,10 +79,10 @@ int main()
  * cargaDatos is used as the start routine for the threads used
  * it accepts a void pointer
 **/
-void cargaDatos ( void *ptr )
+void cargaDatos ( )
 {
+
   int i,j,k;
-  int var1;
   int aux[256];
   int cont=0;
   FILE *fp;
@@ -84,21 +91,23 @@ void cargaDatos ( void *ptr )
 		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHD);
 		exit(-1);
 	}
-	
-	// p(hay_hueco_B[i])
-	for(k=0;k<1025;k++)	//He puesto el for que te comente para que no haya bucle infinito (en teoria XD)
+
+	 sem_wait(&hay_hueco_B);
+	for(k=0;k<1024;k++)	//He puesto el for que te comente para que no haya bucle infinito (en teoria XD)
 	{
     for(i = 0; i<256; i++)
     {
     fscanf(fp,"%d",&B[cont].vector[i]);
+  //  printf("El contenido de la linea %d es %d\n",B[cont].fila, B[cont].vector[i]);
     }
+    B[cont].fila=k+1;
     cont = (cont+1)%TAMBUFF;
   }
-  // v(hay_dato_B[i])
+  sem_post(&hay_dato_B);
 
   for(i = 0; i<TAMBUFF; i++){
     for(j = 0; j < 256; j++){
-        printf("El contenido de la linea %d es %d",cont, B[i].vector[j]);
+        printf("El contenido de la linea %d es %d\n",B[i].fila, B[i].vector[j]);
     }
     printf("\n");
   }
@@ -122,15 +131,19 @@ void calcula_i(int numHil)
   int i;
   double resultado=0; // es double porque pow() devuelve double
   int aux;
-    // p(hay_dato_B[i])
+    sem_wait(&hay_dato_B);
     for(i = 0; i< 256; i++){
         vectorRegistro_i[i]=B[numHil].vector[i];
+        printf("%d ",vectorRegistro_i[i]);
     }
   filaRegistro_i=B[numHil].fila;//Recojo en la estructura esta el contenido del buffer
   //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
-    //v(hay_hueco_B[i])
+    sem_post(&hay_hueco_B);
+    fflush(stdout);
   printf("Se ha liberado la celda %d del buffer",filaRegistro_i);
-  
+
+  fflush(stdout);
+
   FILE *fp;
   if((fp=fopen(RUTAFICHP,"r"))==NULL)
 	{
@@ -150,7 +163,7 @@ void calcula_i(int numHil)
     R[numHil].fila=filaRegistro_i;//En el nuevo buffer añado la fila
     R[numHil].D=resultado; //En el nuevo buffer añado la Distancia
 	//numHil sera lo que le enviamos que ya te comente arriba
-	
+
 	// v(hay_dato_R[i])
 	// p(hay_espacio_R[i])
 }
