@@ -55,17 +55,17 @@ int main()
   /*Inicializacion de semaforos*/
   sem_init(&hay_hueco_B,0,TAMBUFF);
   sem_init(&hay_dato_B,0,0);
-  for(i=0;i<TAMBUFF-1;i++){
+  for(i=0;i<TAMBUFF;i++){
     sem_init(&mutex_B[i],0,1);//garantizamos exclusion mutua sobre celdas en el buffer
   }
 
   pthread_create (&hiloCarga, NULL, (void *) &cargaDatos, (void *) NULL);
-	for(i=0;i<NUM_HCALC-1;i++){//sustituir el <0 por <NUM_HCALC-1
+	for(i=0;i<NUM_HCALC;i++){//sustituir el <0 por <NUM_HCALC
         int *arg;
-        if ((arg = (int*)malloc(sizeof(int))) == NULL) {
+        //if ((arg = (int*)malloc(sizeof(int))) == NULL) {
           printf("No se puedo reservar memoria para arg.\n");
-          exit(-1);
-        }//lo copie de un ejemplo pero se instancia *arg dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
+        //exit(-1);
+        //}//lo copie de un ejemplo pero se instancia *arg dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
         *arg = i;//int *arg = 0;
        pthread_create (&hiloCalcula_i, 0, (void *) &calcula_i, arg);
 	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de         hilo que es
@@ -102,16 +102,12 @@ void cargaDatos ( )
     fscanf(fp,"%d",&B[cont].vector[i]);
     //printf("El contenido de la linea %d es %d\n",B[cont].fila, B[cont].vector[i]);
     }
+    printf("El contenido de la linea %d es %d\n",B[cont].fila, B[cont].vector[i]);
+    fflush(stdout);
+    printf("\n");fflush(stdout);
     B[cont].fila=k+1;
     sem_post(&hay_dato_B);//señala que hay un dato el buffer
     cont = (k+1)%TAMBUFF; // podemos sustituir contador por k
-  }
-  for(i = 0; i<TAMBUFF; i++){
-    for(j = 0; j < 256; j++){
-        printf("El contenido de la linea %d es %d\n",B[i].fila, B[i].vector[j]);
-        fflush(stdout);
-    }
-    printf("\n");
   }
   fclose(fp);
   pthread_exit(0); /* exit */
@@ -140,8 +136,8 @@ void calcula_i(int numHil)
   sem_post(&mutex_B[numHil]);
   sem_post(&hay_hueco_B); // indica que hay un hueco en el buffer pues se ha vaciado una celda
   printf("Se ha liberado la celda %d del buffer",filaRegistro_i);fflush(stdout);
-  FILE *fp;
-  if((fp=fopen(RUTAFICHP,"r"))==NULL)
+  FILE *fr;
+  if((fr=fopen(RUTAFICHP,"r"))==NULL)
 	{
 		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHP);
     fflush(stderr);
@@ -152,7 +148,7 @@ void calcula_i(int numHil)
 						//elevarlo al cuadrado y sumarlos todos, despues hacemos la raiz
 						//si el calculo da problemas de tipos habria que castear
 	{
-		fscanf(fp,"%d",&aux);
+		fscanf(fr,"%d",&aux);
 		resultado=resultado+pow((aux-vectorRegistro_i[i]),2);
 	}
 	resultado=sqrt(resultado);
@@ -162,5 +158,5 @@ void calcula_i(int numHil)
 
 	// v(hay_dato_R[i])
 	// p(hay_espacio_R[i])
-  fclose(fp);
+  fclose(fr);
 }
