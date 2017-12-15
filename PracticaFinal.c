@@ -55,19 +55,19 @@ int main()
   /*Inicializacion de semaforos*/
   sem_init(&hay_hueco_B,0,TAMBUFF);
   sem_init(&hay_dato_B,0,0);
-  for(i=0;i<TAMBUFF;i++){
+  for(i=0;i<TAMBUFF-1;i++){
     sem_init(&mutex_B[i],0,1);//garantizamos exclusion mutua sobre celdas en el buffer
   }
 
   pthread_create (&hiloCarga, NULL, (void *) &cargaDatos, (void *) NULL);
-	for(i=0;i<NUM_HCALC -1;i++){//sustituir el <0 por <NUM_HCALC
+	for(i=0;i<NUM_HCALC-1;i++){//sustituir el <0 por <NUM_HCALC-1
         int *arg;
         if ((arg = (int*)malloc(sizeof(int))) == NULL) {
           printf("No se puedo reservar memoria para arg.\n");
           exit(-1);
         }//lo copie de un ejemplo pero se instancia *arg dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
         *arg = i;//int *arg = 0;
-       pthread_create (&hiloCalcula_i, 0 , (void *) &calcula_i, arg);
+       pthread_create (&hiloCalcula_i, 0, (void *) &calcula_i, arg);
 	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de         hilo que es
 	//Nos hara mas tarde en el metodo calcula_i
   }
@@ -104,7 +104,7 @@ void cargaDatos ( )
     }
     B[cont].fila=k+1;
     sem_post(&hay_dato_B);//señala que hay un dato el buffer
-    cont = (cont+1)%TAMBUFF; // podemos sustituir contador por k
+    cont = (k+1)%TAMBUFF; // podemos sustituir contador por k
   }
   for(i = 0; i<TAMBUFF; i++){
     for(j = 0; j < 256; j++){
