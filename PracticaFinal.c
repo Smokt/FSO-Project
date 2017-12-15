@@ -45,6 +45,7 @@ sem_t hay_hueco_B;
 sem_t hay_dato_B;
 sem_t mutex_B[TAMBUFF];
 //necesitamos una variable global que sea la sig posicion a leer
+int sig_vaciar = 0;
 
 int main()
 {
@@ -97,24 +98,24 @@ void cargaDatos ( )
   for(k=0;k<1024;k++)	//He puesto el for que te comente para que no haya bucle infinito (en teoria XD)
 	{
     sem_wait(&hay_hueco_B);//espera a que haya hueco en el buffer para poder escribir
-    B[cont].fila=k+1;
-    printf("El contenido de la linea %d es: [ ", B[cont].fila);fflush(stdout);
+    cont = k % TAMBUFF; // podemos sustituir contador por k
+    B[cont].fila=cont+1;
+    //printf("********\nEl contenido de la linea %d es: [ ", B[cont].fila);fflush(stdout);
     for(i = 0; i<256; i++)
     {
       fscanf(fp,"%d",&B[cont].vector[i]);
       //printf("El contenido de la linea %d es %d\n",B[cont].fila, B[cont].vector[i]);
-      printf("%d ",B[cont].vector[i]);fflush(stdout);
+      //printf("%d ",B[cont].vector[i]);fflush(stdout);
     }
-    printf("] \n");fflush(stdout);
+    printf("\nSe ha llenado la fila %d del Buffer B\n", B[cont].fila);fflush(stdout);
     sem_post(&hay_dato_B);//señala que hay un dato el buffer
-    cont = (k+1)%TAMBUFF; // podemos sustituir contador por k
   }
   fclose(fp);
   pthread_exit(0); /* exit */
 } /* print_message_function ( void *ptr ) */
 
 //Aqui comienza el metodo de los hilos calculadores
-void calcula_i(int numHil)
+void calcula_i(int numHil) //necesito coger el valor de numHil
 {
   //typedef struct {
   int vectorRegistro_i[256];
@@ -125,17 +126,21 @@ void calcula_i(int numHil)
 				//tenia otra cosa y dije bueno pues lo dejo, aunque se puede sacar de la struct
   int i,aux;
   double resultado=0; // es double porque pow() devuelve double
+  printf("El hilo calcula_%d está esperando a datos\n", numHil);fflush(stdout);
   sem_wait(&hay_dato_B); //espera a que haya un dato en el buffer para poder vaciar la celda
-  sem_wait(&mutex_B[numHil]);
+  sem_wait(&mutex_B[sig_vaciar]);
+  filaRegistro_i=B[sig_vaciar].fila;//Recojo en la estructura esta el contenido del buffer
   for(i = 0; i< 256; i++){
-    vectorRegistro_i[i]=B[numHil].vector[i];
-    printf("%d ",vectorRegistro_i[i]);fflush(stdout);
+    vectorRegistro_i[i]=B[sig_vaciar].vector[i];
+    printf("Calcula_%d, leyendo fila %d está leyendo dato:%d \n", numHil,
+     filaRegistro_i, vectorRegistro_i[i]);
+    fflush(stdout);
   }
-  filaRegistro_i=B[numHil].fila;//Recojo en la estructura esta el contenido del buffer
   //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
-  sem_post(&mutex_B[numHil]);
+  sig_vaciar = (sig_vaciar+1)%TAMBUFF;
+  sem_post(&mutex_B[sig_vaciar]);
   sem_post(&hay_hueco_B); // indica que hay un hueco en el buffer pues se ha vaciado una celda
-  printf("Se ha liberado la celda %d del buffer",filaRegistro_i);fflush(stdout);
+  printf("\nSe ha liberado la celda %d del buffer\n",filaRegistro_i);fflush(stdout);
   FILE *fr;
   if((fr=fopen(RUTAFICHP,"r"))==NULL)
 	{
