@@ -63,11 +63,11 @@ int main()
 	for(i=0;i<NUM_HCALC;i++){//sustituir el <0 por <NUM_HCALC
         int *arg;
         //if ((arg = (int*)malloc(sizeof(int))) == NULL) {
-          printf("No se puedo reservar memoria para arg.\n");
+        //printf("No se puedo reservar memoria para arg.\n");fflush(stdout);
         //exit(-1);
         //}//lo copie de un ejemplo pero se instancia *arg dentro del for para que cada thread reciba una zona de memoria diferente como arguento y no haya problemas cuando vayan a leer el dato
         *arg = i;//int *arg = 0;
-       pthread_create (&hiloCalcula_i, 0, (void *) &calcula_i, arg);
+        pthread_create (&hiloCalcula_i, 0, (void *) &calcula_i, arg);
 	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de         hilo que es
 	//Nos hara mas tarde en el metodo calcula_i
   }
@@ -97,15 +97,15 @@ void cargaDatos ( )
   for(k=0;k<1024;k++)	//He puesto el for que te comente para que no haya bucle infinito (en teoria XD)
 	{
     sem_wait(&hay_hueco_B);//espera a que haya hueco en el buffer para poder escribir
+    B[cont].fila=k+1;
+    printf("El contenido de la linea %d es: [ ", B[cont].fila);fflush(stdout);
     for(i = 0; i<256; i++)
     {
-    fscanf(fp,"%d",&B[cont].vector[i]);
-    //printf("El contenido de la linea %d es %d\n",B[cont].fila, B[cont].vector[i]);
+      fscanf(fp,"%d",&B[cont].vector[i]);
+      //printf("El contenido de la linea %d es %d\n",B[cont].fila, B[cont].vector[i]);
+      printf("%d ",B[cont].vector[i]);fflush(stdout);
     }
-    printf("El contenido de la linea %d es %d\n",B[cont].fila, B[cont].vector[i]);
-    fflush(stdout);
-    printf("\n");fflush(stdout);
-    B[cont].fila=k+1;
+    printf("] \n");fflush(stdout);
     sem_post(&hay_dato_B);//señala que hay un dato el buffer
     cont = (k+1)%TAMBUFF; // podemos sustituir contador por k
   }
