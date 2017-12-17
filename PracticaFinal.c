@@ -103,9 +103,10 @@ void cargaDatos ( )
     }
     B[cont].fila=k+1;
     cont = (cont+1)%TAMBUFF;
+    sem_post(&hay_dato_B);//señala que hay un dato el buffer
   }
   sem_post(&mutex_B[cont]);
-  sem_post(&hay_dato_B);//señala que hay un dato el buffer
+
   for(i = 0; i<TAMBUFF; i++){
     for(j = 0; j < 256; j++){
         printf("El contenido de la linea %d es %d\n",B[i].fila, B[i].vector[j]);
