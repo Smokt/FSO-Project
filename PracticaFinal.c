@@ -26,7 +26,8 @@
 void cargaDatos ( );
 // Cabecera del metodo de los hilos calculadores
 void calcula_i( int *numHil );
-
+// Cabecera del metodo del hilo Recoge
+void recoge( );
 /* Recursos compartidos */
 typedef struct {
   int vector[256];
@@ -55,6 +56,7 @@ int main()
   int i;
   pthread_t hiloCarga;     //Creacion del hilo
   pthread_t hiloCalcula_i; //Creo los hilos consumidores
+  pthread_t hiloRecoge;    //Instancia del hilo Recoge
 
   /*Inicializacion de semaforos*/
   sem_init(&hay_hueco_B,0,TAMBUFF);
@@ -66,20 +68,19 @@ int main()
 	for(i=0;i<NUM_HCALC;i++){//sustituir el <0 por <NUM_HCALC
         int *arg;
         if ((arg = (int*)malloc(sizeof(int))) == NULL) {
-        printf("No se puedo reservar memoria para arg.\n");fflush(stdout);
-        exit(-1);
-        }//lo copie de un ejemplo pero se instancia *arg dentro del for para que
-         //cada thread reciba una zona de memoria diferente como arguento y
-         //no haya problemas cuando vayan a leer el dato
+          printf("No se puedo reservar memoria para arg.\n");fflush(stdout);
+          exit(-1);
+        }
         *arg = i;//int *arg = 0;
         pthread_create (&hiloCalcula_i, 0, (void *) &calcula_i, arg);
-	//Aquí se va creando cada hilo, habria que mirar como enviar a cada uno el numero concreto de         hilo que es
-	//Nos hara mas tarde en el metodo calcula_i
   }
+  pthread_create(&hiloRecoge, NULL, (void *) &hiloRecoge, (void *) NULL);
+
     /*El main acaba*/
   pthread_join(hiloCarga, NULL);
-  pthread_join(hiloCalcula_i, NULL); //Esto lo pongo pero Ni Puta Idea
-  printf("El hiloCarga ha termina'o...\n");fflush(stdout);
+  pthread_join(hiloCalcula_i, NULL);
+  pthread_join(hiloRecoge, NULL);
+  printf("El problema ha termina'o...\n");fflush(stdout);
 
   exit(0);
 }
@@ -164,6 +165,8 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
 		resultado=resultado+pow((aux-vectorRegistro_i[i]),2);
 	}
 	resultado=sqrt(resultado);
+
+  //hacer sincronizacion del vector R
   R[*numHil].fila=filaRegistro_i;
   R[*numHil].D=resultado;
   printf("---> la distancia euclidea de la fila %d es: %d\n\n",filaRegistro_i, resultado);
@@ -178,4 +181,8 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
   sem_post(&mutex_LC);
   fclose(fr);
 }
+}
+
+void recoge ( ) {
+
 }
