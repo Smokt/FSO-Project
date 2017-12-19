@@ -1,4 +1,3 @@
-
 //He añadido cosas como el segundo buffer y un principio de funcionalidad de los hilos calculadores
 //los cuales tambien he creado (o algo asi). Te dejo todo con comentarios lo que he añadido o cambiado
 //Aunque he cambiado solo el for ese.
@@ -123,66 +122,66 @@ void cargaDatos ( )
 //Aqui comienza el metodo de los hilos calculadores
 void calcula_i(int *numHil) //necesito coger el valor de numHil
 {
-  while(1)
-  {
-      int vectorRegistro_i[256],filaRegistro_i;
-      int i,j,aux;
-      double resultado=0; // es double porque pow() devuelve double
-      printf("El hilo calcula_%d está esperando a datos\n", *numHil);fflush(stdout);
-      sem_wait(&hay_dato_B); //espera a que haya un dato en el buffer para poder vaciar la celda
-      
-      sem_wait(&mutex_LC);
-      if(lineaCalculada==1024){
-          sem_post(&mutex_LC);
-          sem_post(&hay_dato_B);
-          pthread_exit(0);
-      }
-      sem_post(&mutex_LC);
-      printf("El hilo calcula_%d ha dejado de esperar\n", *numHil);fflush(stdout);
-      //sem_wait(&mutex_B[sig_vaciar]);
-      j = sig_vaciar;
-      sig_vaciar = (sig_vaciar+1)%TAMBUFF;
-      //sem_post(&mutex_B[sig_vaciar]);
-      sem_post(&mutex_SV);
-      filaRegistro_i=B[j].fila;//Recojo en la estructura esta el contenido del buffer
-      for(i = 0; i< 256; i++){
-          vectorRegistro_i[i]=B[j].vector[i];
-          printf("Calcula_%d, leyendo fila %d, en la celda %d del buffer. numHilEstá leyendo dato:%d \n",
-                 *numHil,filaRegistro_i, j,vectorRegistro_i[i]);
-          fflush(stdout);
-      }
-      //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
-      sem_post(&hay_hueco_B);
-      printf("\nSe ha liberado la celda %d del buffer\n",filaRegistro_i);fflush(stdout);
-      FILE *fr;
-      if((fr=fopen(RUTAFICHP,"r"))==NULL)
-      {
-          fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHP);
-          fflush(stderr);
-          exit(-1);
-      }
-      for (i=0;i<256;i++)
-      {
-          fscanf(fr,"%d",&aux);
-          resultado=resultado+pow((aux-vectorRegistro_i[i]),2);
-      }
-      resultado=sqrt(resultado);
-      
-      //hacer sincronizacion del vector R
-      R[*numHil].fila=filaRegistro_i;
-      R[*numHil].D=resultado;
-      printf("---> la distancia euclidea de la fila %d es: %d\n\n",filaRegistro_i, resultado);
-      fflush(stdout);
-      sem_wait(&mutex_LC);
-      lineaCalculada++;
-      if(lineaCalculada == 1024){
-          sem_post(&mutex_LC);
-          sem_post(&hay_dato_B);
-          pthread_exit(0);
-      }
-      sem_post(&mutex_LC);
-      fclose(fr);
+  while(1){
+  int vectorRegistro_i[256],filaRegistro_i;
+  int i,j,aux;
+  double resultado=0; // es double porque pow() devuelve double
+  printf("El hilo calcula_%d está esperando a datos\n", *numHil);fflush(stdout);
+  sem_wait(&hay_dato_B); //espera a que haya un dato en el buffer para poder vaciar la celda
+
+  sem_wait(&mutex_LC);
+  if(lineaCalculada==1024){
+    sem_post(&mutex_LC);
+    sem_post(&hay_dato_B);
+    pthread_exit(0);
   }
+  sem_post(&mutex_LC);
+  printf("El hilo calcula_%d ha dejado de esperar\n", *numHil);fflush(stdout);
+  //sem_wait(&mutex_B[sig_vaciar]);
+  sem_wait(&mutex_SV);
+  j = sig_vaciar;
+  sig_vaciar = (sig_vaciar+1)%TAMBUFF;
+  //sem_post(&mutex_B[sig_vaciar]);
+  sem_post(&mutex_SV);
+  filaRegistro_i=B[j].fila;//Recojo en la estructura esta el contenido del buffer
+  for(i = 0; i< 256; i++){
+    vectorRegistro_i[i]=B[j].vector[i];
+    printf("Calcula_%d, leyendo fila %d, en la celda %d del buffer. numHilEstá leyendo dato:%d \n",
+     *numHil,filaRegistro_i, j,vectorRegistro_i[i]);
+    fflush(stdout);
+  }
+  //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
+  sem_post(&hay_hueco_B);
+  printf("\nSe ha liberado la celda %d del buffer\n",filaRegistro_i);fflush(stdout);
+  FILE *fr;
+  if((fr=fopen(RUTAFICHP,"r"))==NULL)
+	{
+		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHP);
+    fflush(stderr);
+		exit(-1);
+	}
+	for (i=0;i<256;i++)
+	{
+		fscanf(fr,"%d",&aux);
+		resultado=resultado+pow((aux-vectorRegistro_i[i]),2);
+	}
+	resultado=sqrt(resultado);
+
+  //hacer sincronizacion del vector R
+  R[*numHil].fila=filaRegistro_i;
+  R[*numHil].D=resultado;
+  printf("---> la distancia euclidea de la fila %d es: %f\n\n",filaRegistro_i, resultado);
+  fflush(stdout);
+  sem_wait(&mutex_LC);
+  lineaCalculada++;
+  if(lineaCalculada == 1024){
+    sem_post(&mutex_LC);
+    sem_post(&hay_dato_B);
+    pthread_exit(0);
+  }
+  sem_post(&mutex_LC);
+  fclose(fr);
+}
 }
 
 void recoge ( ) {
