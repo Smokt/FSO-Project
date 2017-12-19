@@ -18,7 +18,7 @@
 
 /* Constantes */
 #define TAMBUFF 4		//Tamaño buffer circular
-#define NUM_HCALC 3	//Numero de Chacales
+#define NUM_HCALC 6	//Numero de Chacales
 #define RUTAFICHD "./Datos.txt"
 #define RUTAFICHP "./Patron.txt"
 
@@ -49,8 +49,7 @@ sem_t hay_dato_B;
 sem_t mutex_LC; //lineas calculadas
 sem_t mutex_SV;
 //necesitamos una variable global que sea la sig posicion a leer
-int lineaCalculada = 0,sig_vaciar = 0;
-
+int lineaCalculada = 0, sig_vaciar = 0;
 int main()
 {
   int i;
@@ -61,9 +60,7 @@ int main()
   sem_init(&hay_hueco_B,0,TAMBUFF);
   sem_init(&hay_dato_B,0,0);
   sem_init(&mutex_LC,0,1);
-  /*for(i=0;i<TAMBUFF;i++){
-    sem_init(&mutex_B[i],0,1);//garantizamos exclusion mutua sobre celdas en el buffer
-  }*/
+
   sem_init(&mutex_SV,0,1);
   pthread_create (&hiloCarga, NULL, (void *) &cargaDatos, (void *) NULL);
 	for(i=0;i<NUM_HCALC;i++){//sustituir el <0 por <NUM_HCALC
@@ -125,13 +122,8 @@ void cargaDatos ( )
 void calcula_i(int *numHil) //necesito coger el valor de numHil
 {
   while(1){
-  //typedef struct {filaRegistro_i
-  int vectorRegistro_i[256],filaRegistro_i,j;
-  //semaforo
-  //}Registro;
-  //Registro Reg;//Creo esta estructura que en verdad no hace falta, pero al principio
-				//tenia otra cosa y dije bueno pues lo dejo, aunque se puede sacar de la struct
-  int i,aux;
+  int vectorRegistro_i[256],filaRegistro_i;
+  int i,j,aux;
   double resultado=0; // es double porque pow() devuelve double
   printf("El hilo calcula_%d está esperando a datos\n", *numHil);fflush(stdout);
   sem_wait(&hay_dato_B); //espera a que haya un dato en el buffer para poder vaciar la celda
@@ -152,13 +144,12 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
   filaRegistro_i=B[j].fila;//Recojo en la estructura esta el contenido del buffer
   for(i = 0; i< 256; i++){
     vectorRegistro_i[i]=B[j].vector[i];
-    printf("Calcula_%d, leyendo fila %d, en la celda %d del buffer. Está leyendo dato:%d \n",
+    printf("Calcula_%d, leyendo fila %d, en la celda %d del buffer. numHilEstá leyendo dato:%d \n",
      *numHil,filaRegistro_i, j,vectorRegistro_i[i]);
     fflush(stdout);
   }
   //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
-  sem_post(&hay_hueco_B); // indica que hay un hueco en el buffer pues se ha vaciado una celda
-  //j = (j+1)%TAMBUFF;
+  sem_post(&hay_hueco_B);
   printf("\nSe ha liberado la celda %d del buffer\n",filaRegistro_i);fflush(stdout);
   FILE *fr;
   if((fr=fopen(RUTAFICHP,"r"))==NULL)
@@ -166,31 +157,25 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
 		fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHP);
     fflush(stderr);
 		exit(-1);
-	}//Abro el fichero patroooooooooooon
-	for (i=0;i<256;i++)//Si he entendido bien el enunciado hay que calcular la resta entre posiciones
-						//para cada uno de los 256 numeros que tenemos en el vector con los del patron
-						//elevarlo al cuadrado y sumarlos todos, despues hacemos la raiz
-						//si el calculo da problemas de tipos habria que castear
+	}
+	for (i=0;i<256;i++)
 	{
 		fscanf(fr,"%d",&aux);
 		resultado=resultado+pow((aux-vectorRegistro_i[i]),2);
 	}
 	resultado=sqrt(resultado);
-  R[*numHil].fila=filaRegistro_i;//En el nuevo buffer añado la fila
-  R[*numHil].D=resultado; //En el nuevo buffer añado la Distancia
-	//numHil sera lo que le enviamos que ya te comente arriba
+  R[*numHil].fila=filaRegistro_i;
+  R[*numHil].D=resultado;
+  printf("---> la distancia euclidea de la fila %d es: %d\n\n",filaRegistro_i, resultado);
+  fflush(stdout);
   sem_wait(&mutex_LC);
   lineaCalculada++;
   if(lineaCalculada == 1024){
     sem_post(&mutex_LC);
     sem_post(&hay_dato_B);
-
     pthread_exit(0);
   }
-
   sem_post(&mutex_LC);
-	// v(hay_dato_R[i])
-	// p(hay_espacio_R[i])
   fclose(fr);
 }
 }
