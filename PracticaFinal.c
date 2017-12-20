@@ -93,7 +93,7 @@ int main()
   pthread_join(hiloCarga, NULL);
   pthread_join(hiloCalcula_i, NULL);
   pthread_join(hiloRecoge, NULL);
-  printf("El problema ha termina'o...\n");fflush(stdout);
+  printf("...FIN DEL PROGRAMA...\n");fflush(stdout);
 
   exit(0);
 }
@@ -136,7 +136,7 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
     int vectorRegistro_i[256],filaRegistro_i;
     int i,j,aux;
     double resultado=0; // es double porque pow() devuelve double
-    printf("El hilo calcula_%d está esperando a que buffer B tenga datos\n", *numHil);fflush(stdout);
+    printf("El hilo calcula_%d está esperando a que buffer B tenga datos\n\n", *numHil);fflush(stdout);
     sem_wait(&hay_dato_B); //espera a que haya un dato en el buffer para poder vaciar la celda
 
     sem_wait(&mutex_LC);
@@ -156,13 +156,9 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
     filaRegistro_i=B[j].fila;//Recojo en la estructura esta el contenido del buffer
     for(i = 0; i< 256; i++){
       vectorRegistro_i[i]=B[j].vector[i];
-      //printf("Calcula_%d, leyendo fila %d, en la celda %d del buffer.Está leyendo dato:%d \n",
-      //*numHil,filaRegistro_i, j,vectorRegistro_i[i]);
-      //fflush(stdout);
     }
-    //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
     sem_post(&hay_hueco_B);
-    printf("\nSe ha liberado la celda %d del buffer B\n\n",filaRegistro_i);fflush(stdout);
+    printf("Se ha liberado la celda %d con la linea %d del buffer B\n\n", j, filaRegistro_i);fflush(stdout);
     FILE *fr;
     if((fr=fopen(RUTAFICHP,"r"))==NULL)
     {
@@ -185,7 +181,8 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
     R[*numHil].fila=filaRegistro_i;
     R[*numHil].D=resultado;
     sem_post(&hay_dato_R);
-
+    printf("La fila %d queda guardada en la posicion %d del buffer R\n\n", filaRegistro_i, *numHil);
+    fflush(stdout);
     printf("---> la distancia euclidea para la fila %d es: %lf\n",
     filaRegistro_i, resultado);
     fflush(stdout);
@@ -211,11 +208,12 @@ void recoge ( ) {
 	  
  
     sem_wait(&hay_dato_R);
-	   sem_wait(&mutex_CL2);
+	sem_wait(&mutex_CL2);
     aux=R[celdaLibre].D;
     auxLinea=R[celdaLibre].fila;
-	  sem_post(&mutex_CL);
+    sem_post(&mutex_CL);
     sem_post(&hay_hueco_R);
+    printf("Se librera la celda %d , con la fila %d del buffer R\n\n", celdaLibre, auxLinea);fflush(stdout);
 
     if (aux < D) {
       D = aux;
@@ -227,6 +225,6 @@ void recoge ( ) {
         if (contador == 6){break;}
     }
   }
-  printf("La distancia minima es %lf, y su fila es: %d\n",D,NumL);fflush(stdout);
+  printf("La distancia minima es %lf, y su fila es: %d\n\n",D,NumL);fflush(stdout);
   pthread_exit(0);
 }
