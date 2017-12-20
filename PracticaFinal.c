@@ -136,7 +136,7 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
     int vectorRegistro_i[256],filaRegistro_i;
     int i,j,aux;
     double resultado=0; // es double porque pow() devuelve double
-    printf("El hilo calcula_%d está esperando a datos\n", *numHil);fflush(stdout);
+    printf("El hilo calcula_%d está esperando a que buffer B tenga datos\n", *numHil);fflush(stdout);
     sem_wait(&hay_dato_B); //espera a que haya un dato en el buffer para poder vaciar la celda
 
     sem_wait(&mutex_LC);
@@ -146,7 +146,7 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
       break;
     }
     sem_post(&mutex_LC);
-    printf("El hilo calcula_%d ha dejado de esperar\n", *numHil);fflush(stdout);
+    printf("El hilo calcula_%d ha dejado de esperar\n\n", *numHil);fflush(stdout);
     //sem_wait(&mutex_B[sig_vaciar]);
     sem_wait(&mutex_SV);
     j = sig_vaciar;
@@ -162,7 +162,7 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
     }
     //Aqui recojo el dato de la posicion numHil, numHil debería ser lo que le pasamos al hilo que comente arriba
     sem_post(&hay_hueco_B);
-    printf("\nSe ha liberado la celda %d del buffer\n",filaRegistro_i);fflush(stdout);
+    printf("\nSe ha liberado la celda %d del buffer B\n\n",filaRegistro_i);fflush(stdout);
     FILE *fr;
     if((fr=fopen(RUTAFICHP,"r"))==NULL)
     {
@@ -186,7 +186,7 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
     R[*numHil].D=resultado;
     sem_post(&hay_dato_R);
 
-    printf("---> la distancia euclidea de la fila %d es: %lf\n\n",
+    printf("---> la distancia euclidea para la fila %d es: %lf\n",
     filaRegistro_i, resultado);
     fflush(stdout);
     sem_wait(&mutex_LC);
@@ -204,7 +204,7 @@ void calcula_i(int *numHil) //necesito coger el valor de numHil
 
 void recoge ( ) {
 
-  int auxLinea,NumL,celda;
+  int auxLinea,NumL,celda,contador=0;
   double aux,D=999999999;
 
   while(1){
@@ -221,7 +221,12 @@ void recoge ( ) {
       D = aux;
       NumL = auxLinea;
     }
-
-    printf("La distancia minima es %lf, y su fila es: %d\n",D,NumL);fflush(stdout);
+    
+    if (auxLinea == 1024 || auxLinea == 1023 || auxLinea ==1022 || auxLinea ==1021 || auxLinea == 1020 || auxLinea == 1019){
+        contador++;
+        if (contador == 6){break;}
+    }
   }
+  printf("La distancia minima es %lf, y su fila es: %d\n",D,NumL);fflush(stdout);
+  pthread_exit(0);
 }
