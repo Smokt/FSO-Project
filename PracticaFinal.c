@@ -1,33 +1,27 @@
-//He añadido cosas como el segundo buffer y un principio de funcionalidad de los hilos calculadores
-//los cuales tambien he creado (o algo asi). Te dejo todo con comentarios lo que he añadido o cambiado
-//Aunque he cambiado solo el for ese.
-//Si esto funciona quedaria meter los semaforos para asegurar el 7, es mas que probable que no
-//por lo que bueno algo es algo, no he podido probarlo si quiera desde el pueblo :/
-//asi que nada ya me contaras y sorry, no puse acentos por si casca lo del utf-8 xD
+/* Alejandro Martinez Andres */
+/* Carlos Iván Carravilla Ferreras */
+/* Ejecucion en gcc mediante: gcc -o PracticaFinal PracticaFinal.c -lpthread -lm */
 
 /* Includes */
-#include <sys/types.h>  /* Primitive System Data Types */
-#include <semaphore.h>  /* Semaforos */
-#include <pthread.h>    /* POSIX Threads */
-#include <unistd.h>     /* Symbolic Constants */
-#include <stdlib.h>     /* General Utilities */
-#include <string.h>     /* String handling */
-#include <errno.h>      /* Errors */
-#include <stdio.h>      /* Input/Output */
-#include <math.h>       //Añado Math para calcular la raiz en la distancia
+#include <semaphore.h>  //Semaforos
+#include <pthread.h>    // Hilos POSIX
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 
 /* Constantes */
-#define TAMBUFF 4		//Tamaño buffer circular
-#define NUM_HCALC 6	//Numero de Chacales
+#define TAMBUFF 4		 //Tamaño buffer circular
+#define NUM_HCALC 6  //Numero de hilos calculadores
 #define RUTAFICHD "./Datos.txt"
 #define RUTAFICHP "./Patron.txt"
 
-/* prototype for thread routine */
+/* Cabecera del metodo del hilo cargador */
 void cargaDatos ( );
 // Cabecera del metodo de los hilos calculadores
 void calcula_i( int *numHil );
 // Cabecera del metodo del hilo Recoge
 void recoge( );
+
 /* Recursos compartidos */
 typedef struct {
   int vector[256];
@@ -43,64 +37,79 @@ typedef struct {
 Buffer B[TAMBUFF];
 Buffer2 R[NUM_HCALC];
 
-/* Declaracion de samforEstos */
+/* Declaracion de samforos */
 sem_t hay_hueco_B;
 sem_t hay_dato_B;
-//sem_t mutex_B[TAMBUFF];
-sem_t mutex_LC; //lineas calculadas
-sem_t mutex_SV;
-sem_t mutex_CL;
-sem_t mutex_CL2;
+sem_t mutex_LC;     // mutex sobre lineas calculadas
+sem_t mutex_SV;     // mutex sobre siguiente en vaciar
+sem_t mutex_CL;     // mutex sobre celda libre
+sem_t mutex_CL2;    // mutex sobre celda libre, asegura exclusion mutua sobre
+                    // la variable hasta que recoge no libere la celda
 sem_t hay_dato_R;
 sem_t hay_hueco_R;
 
-//necesitamos una variable global que sea la sig posicion a leer
-int lineaCalculada = 0, sig_vaciar = 0;
-int celdaLibre=0;
+/* Variables globales */
+int lineaCalculada = 0, sig_vaciar = 0, celdaLibre=0;
+int Patron[256];
 
 int main()
 {
-  int i;
+  int i, *arg;
+
   pthread_t hiloCarga;     //Creacion del hilo
   pthread_t hiloCalcula_i; //Creo los hilos consumidores
   pthread_t hiloRecoge;    //Instancia del hilo Recoge
-  sem_init(&mutex_CL,0,1);
   /*Inicializacion de semaforos*/
   sem_init(&hay_hueco_B,0,TAMBUFF);
   sem_init(&hay_dato_B,0,0);
   sem_init(&mutex_LC,0,1);
   sem_init(&mutex_CL,0,1);
   sem_init(&mutex_CL2,0,1);
-    sem_init(&hay_dato_R,0,0);
-  
-    sem_init(&hay_hueco_R,0,NUM_HCALC);
-  
+  sem_init(&hay_dato_R,0,0);
+  sem_init(&hay_hueco_R,0,NUM_HCALC);
   sem_init(&mutex_SV,0,1);
 
+  //Lectura de fichero Patron
+  FILE *fr;
+  if((fr=fopen(RUTAFICHP,"r"))==NULL)
+  {
+    fprintf(stderr,"No se pudo abrir el fichero de datos %s\n\n", RUTAFICHP);
+    fflush(stderr);
+    exit(-1);
+  }
+  for (i=0;i<256;i++)
+  {
+    fscanf(fr,"%d",&Patron[i]);
+  }
+  fclose(fr);
+
+  // Creacion del hilo carga
   pthread_create (&hiloCarga, NULL, (void *) &cargaDatos, (void *) NULL);
-  for(i=0;i<NUM_HCALC;i++){//sustituir el <0 por <NUM_HCALC
-    int *arg;
+  for(i=0;i<NUM_HCALC;i++)
+  {
     if ((arg = (int*)malloc(sizeof(int))) == NULL) {
-      printf("No se puedo reservar memoria para arg.\n");fflush(stdout);
+      printf("No se puedo reservar memoria para arg.\n\n");fflush(stdout);
       exit(-1);
     }
-    *arg = i;//int *arg = 0;
+    // asignamos memoria al agumento que recibira el hilo calcula_i
+    *arg = i;
+    // Creacion de los hilos calculadores
     pthread_create (&hiloCalcula_i, 0, (void *) &calcula_i, arg);
   }
+  free(arg);
+  // Creacion del hilo recoge
   pthread_create(&hiloRecoge, NULL, (void *) recoge, (void *) NULL);
 
   /*El main acaba*/
   pthread_join(hiloCarga, NULL);
   pthread_join(hiloCalcula_i, NULL);
   pthread_join(hiloRecoge, NULL);
-  printf("...FIN DEL PROGRAMA...\n");fflush(stdout);
 
+  printf("...FIN DEL PROGRAMA...\n");fflush(stdout);
   exit(0);
 }
-/**
- * cargaDatos is used as the start routine for the threads used
- * it accepts a void pointer
- **/
+
+/* Hilo cargador */
 void cargaDatos ( )
 {
    int i,j,k,cont=0;
@@ -113,118 +122,94 @@ void cargaDatos ( )
      exit(-1);
    }
 
-   for(k=0;k<1024;k++)	//He puesto el for que te comente para que no haya bucle infinito (en teoria XD)
+   for(k=0;k<1024;k++)
    {
-     sem_wait(&hay_hueco_B);//espera a que haya hueco en el buffer para poder escribir
-     cont = k % TAMBUFF; // podemos sustituir contador por k
+     sem_wait(&hay_hueco_B);// espera a que haya hueco en el buffer B para poder escribir
+     cont = k % TAMBUFF;    // indice del buffer circular
      B[cont].fila=k+1;
      for(i = 0; i<256; i++)
      {
-       fscanf(fp,"%d",&B[cont].vector[i]);
+       fscanf(fp,"%d",&B[cont].vector[i]); // Guardamos datos en el buffer
      }
-     printf("\nSe ha llenado la fila %d del Buffer B \n\n", B[cont].fila);fflush(stdout);
-     sem_post(&hay_dato_B);//señala que hay un dato el buffer
+     sem_post(&hay_dato_B); // señala que hay un dato el buffer
    }
    fclose(fp);
-   pthread_exit(0); /* exit */
- } /* print_message_function ( void *ptr ) */
+   pthread_exit(0);
+}
 
-//Aqui comienza el metodo de los hilos calculadores
-void calcula_i(int *numHil) //necesito coger el valor de numHil
+/* Metodo de los hilos calculadores */
+void calcula_i(int *numHil)
 {
   while(1) {
-    int vectorRegistro_i[256],filaRegistro_i;
+    int filaRegistro_i;
     int i,j,aux;
-    double resultado=0; // es double porque pow() devuelve double
-    printf("El hilo calcula_%d está esperando a que buffer B tenga datos\n\n", *numHil);fflush(stdout);
-    sem_wait(&hay_dato_B); //espera a que haya un dato en el buffer para poder vaciar la celda
-
-    sem_wait(&mutex_LC);
-    if(lineaCalculada==1024){
-      sem_post(&mutex_LC);
-      sem_post(&hay_dato_B);
-      break;
-    }
-    sem_post(&mutex_LC);
-    printf("El hilo calcula_%d ha dejado de esperar\n\n", *numHil);fflush(stdout);
-    //sem_wait(&mutex_B[sig_vaciar]);
-    sem_wait(&mutex_SV);
-    j = sig_vaciar;
-    sig_vaciar = (sig_vaciar+1)%TAMBUFF;
-    //sem_post(&mutex_B[sig_vaciar]);
-    sem_post(&mutex_SV);
-    filaRegistro_i=B[j].fila;//Recojo en la estructura esta el contenido del buffer
+    double resultado=0;    // es double porque pow() devuelve double
+    sem_wait(&hay_dato_B); // espera a que haya un dato en el buffer para poder vaciar la celda
+    sem_wait(&mutex_LC);   // exclusion mutua sobre lineaCalculada
+      if(lineaCalculada==1024){
+        sem_post(&mutex_LC);  // señala que libera lineaCalculada
+        sem_post(&hay_dato_B);// señala que hay dato en B,
+                              // para que finalice el resto de hilos
+        break;
+      }
+    sem_post(&mutex_LC);   // señala que libera lideaCalculada
+    sem_wait(&mutex_SV);   // exclusion mutua sobre sig_vaciar
+      j = sig_vaciar;
+      sig_vaciar = (sig_vaciar+1)%TAMBUFF;  // indice circular para los calculadores
+    sem_post(&mutex_SV);      // señala que libera sig_vaciar
+    filaRegistro_i=B[j].fila; // recoge el contenido de la fila del buffer
     for(i = 0; i< 256; i++){
-      vectorRegistro_i[i]=B[j].vector[i];
+      // recoge el contenido del vector del buffer
+      aux=Patron[i];
+      resultado=resultado+pow((aux-B[j].vector[i]),2);
     }
     sem_post(&hay_hueco_B);
-    printf("Se ha liberado la celda %d con la linea %d del buffer B\n\n", j, filaRegistro_i);fflush(stdout);
-    FILE *fr;
-    if((fr=fopen(RUTAFICHP,"r"))==NULL)
-    {
-      fprintf(stderr,"No se pudo abrir el fichero de datos %s\n", RUTAFICHP);
-      fflush(stderr);
-      exit(-1);
-    }
-    for (i=0;i<256;i++)
-    {
-      fscanf(fr,"%d",&aux);
-      resultado=resultado+pow((aux-vectorRegistro_i[i]),2);
-    }
     resultado=sqrt(resultado);
-
-	sem_wait(&hay_hueco_R);
-    sem_wait(&mutex_CL);
-    celdaLibre=*numHil;
-    sem_post(&mutex_CL2);
-    
-    R[*numHil].fila=filaRegistro_i;
-    R[*numHil].D=resultado;
+	  sem_wait(&hay_hueco_R);
+      sem_wait(&mutex_CL);  // exclusion mutua sobre celdaLibre
+        celdaLibre=*numHil;
+      sem_post(&mutex_CL2); // prolongamos exclusion mutua sobre celdaLibre,
+                            // hasta que recoge libera la celda
+      R[*numHil].fila=filaRegistro_i;
+      R[*numHil].D=resultado;
     sem_post(&hay_dato_R);
-    printf("La fila %d queda guardada en la posicion %d del buffer R\n\n", filaRegistro_i, *numHil);
-    fflush(stdout);
-    printf("---> la distancia euclidea para la fila %d es: %lf\n",
-    filaRegistro_i, resultado);
-    fflush(stdout);
-    sem_wait(&mutex_LC);
+    sem_wait(&mutex_LC);    // exclusion mutua sobre lineaCalculada
     lineaCalculada++;
-    if(lineaCalculada == 1024){
-      sem_post(&mutex_LC);
-      sem_post(&hay_dato_B);
-      break;
-    }
+      if(lineaCalculada == 1024){
+        sem_post(&mutex_LC);
+        sem_post(&hay_dato_B);
+        break;
+      }
     sem_post(&mutex_LC);
-    fclose(fr);
   }
   pthread_exit(0);
 }
 
+/* Hilo encargado de la recogida de datos del buffer R y el calculo del valor minimo */
 void recoge ( ) {
-
+  // Defnicion de variables locales
   int auxLinea,NumL,celda,contador=0;
-  double aux,D=999999999;
-
-  while(1){
-	  
- 
-    sem_wait(&hay_dato_R);
-	sem_wait(&mutex_CL2);
-    aux=R[celdaLibre].D;
-    auxLinea=R[celdaLibre].fila;
-    sem_post(&mutex_CL);
+  double aux,D;
+  // Contador aumentara cada vez que se procese una de las ultimas NUM_HCALC lineas
+  // De esta manera garantizamos que el hilo finaliza
+  while(contador != NUM_HCALC)
+  {
+    sem_wait(&hay_dato_R);   // Esperamos a que haya dato en el Buffer
+  	  sem_wait(&mutex_CL2);  // Espera a poder acceder a celdaLibre
+        aux=R[celdaLibre].D;
+        auxLinea=R[celdaLibre].fila;
+      sem_post(&mutex_CL);
     sem_post(&hay_hueco_R);
-    printf("Se librera la celda %d , con la fila %d del buffer R\n\n", celdaLibre, auxLinea);fflush(stdout);
 
-    if (aux < D) {
+    if (NumL == 0 || aux < D) {
+      // La condicion NumL==0 es necesria para garantizar el acceso la primera vez
       D = aux;
       NumL = auxLinea;
     }
-    
-    if (auxLinea == 1024 || auxLinea == 1023 || auxLinea ==1022 || auxLinea ==1021 || auxLinea == 1020 || auxLinea == 1019){
+    printf("La distancia minima es %lf, y su fila es: %d\n\n",D,NumL);fflush(stdout);
+    if (auxLinea >= 1024 - NUM_HCALC){
         contador++;
-        if (contador == 6){break;}
     }
   }
-  printf("La distancia minima es %lf, y su fila es: %d\n\n",D,NumL);fflush(stdout);
   pthread_exit(0);
 }
